@@ -1,0 +1,4 @@
+.env
+.venv*
+sleeper_bot.egg/
+__pycache__/

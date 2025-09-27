@@ -1,0 +1,5 @@
+[project]
+name = "sleeper-bot"
+version = "0.1.0"
+description = "An exploration of building a bot that has better chat than sleeper"
+readme = "README.md"

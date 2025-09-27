@@ -1,0 +1,7 @@
+- Transactions need to push to DB automatically
+- Need to check every 5 mins for new activity
+- Need to figure out how to memes
+
+
+- Want to scrape win percentages / scores every 5 mins
+
