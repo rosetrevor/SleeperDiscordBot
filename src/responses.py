@@ -131,6 +131,8 @@ class ResponseHandler:
                     self.db.db_session.add(transaction)
                     self.db.db_session.commit()  # TODO: Problably want to move a bit of this logic
             return transaction_str
+        elif player_input == "currentidiot":
+            return "the current idiot is trevbawt :("
         else:
             return self.handle_unknown_response()
 
