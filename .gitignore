@@ -1,4 +1,4 @@
 .env
 .venv*
-sleeper_bot.egg/
+sleeper_bot.egg_info/
 __pycache__/
