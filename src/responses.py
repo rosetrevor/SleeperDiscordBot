@@ -6,7 +6,6 @@ from sleeper import get_rosters, get_transactions_by_week, get_week
 
 def get_response(user_input: str) -> str:
     lowered: str = user_input.lower()
-    
     db = DatabaseHelper()
 
     if lowered == "":
@@ -68,6 +67,7 @@ class ResponseHandler:
         return choice(["I do not understand", "What?", "Repeat that?", "Come again?"])
 
     def handle_basic_response(self, message: str) -> str:
+        lowered = message
         if lowered == "":
            return "Well, you are awfully silent..."
         elif "hello" in lowered:
@@ -136,5 +136,5 @@ class ResponseHandler:
 if __name__ == "__main__":
     response_handler = ResponseHandler()
     print(get_week())
-    print(response_handler.handle("!transactions"))
+    print(response_handler.handle("hello"))
 
