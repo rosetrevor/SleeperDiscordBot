@@ -64,7 +64,8 @@ class ResponseHandler:
             return self.handle_basic_response(lowered)
     
     def handle_unknown_response(self):
-        return choice(["I do not understand", "What?", "Repeat that?", "Come again?"])
+        #return choice(["I do not understand", "What?", "Repeat that?", "Come again?"])
+        return
 
     def handle_basic_response(self, message: str) -> str:
         lowered = message
