@@ -17,8 +17,11 @@ def get_matchup_timestamps() -> dict[str, str]:
         format_string = "%Y-%m-%d %H:%M"
         event_datetime = datetime.strptime(event_datetime, format_string)
         for team in teams:
+            if team == "WSH":
+                game_times["WAS"] =  event_datetime.timestamp()
             game_times[team] = event_datetime.timestamp()
     return game_times
 
 if __name__ == "__main__":
-    get_matchup_times()
+    game_times = get_matchup_timestamps()
+    print(game_times)
