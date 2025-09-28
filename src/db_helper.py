@@ -147,7 +147,7 @@ class DatabaseHelper:
         manager = self.get_manager(manager_id)
         started_players = self.get_players_by_ids(started_ids)
         benched_players = self.get_players_by_ids(benched_ids)
-        player_swap_str = f"Boldly late move by {manager.display_name}:\n  Started:\n"
+        player_swap_str = f"🚨 Late move alert by {manager.display_name} 🚨\n  Started:\n"
         late_swap = False
         for started_player in started_players:
             game_time = matchup_timestamps[started_player.team]
