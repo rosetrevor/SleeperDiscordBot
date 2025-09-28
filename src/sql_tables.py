@@ -115,6 +115,23 @@ class Manager(Base):
         return self.display_name
 
 
+class ManagerScore(Base):
+    __tablename__ = "manager_scores"
+    manager_id: int = sql.Column(sql.BigInteger, primary_key = True)
+    timestamp: int = sql.Column(sql.BigInteger, primary_key = True)
+    projected_score: float = sql.Column(sql.Float)
+    current_score: float = sql.Column(sql.Float)
+
+    def __init__(self, manager_id: int, timestamp: int, projected_score: float, current_score: float) -> None:
+        self.manager_id = manager_id
+        self.timestamp = timestamp
+        self.projected_score = projected_score
+        self.current_score = current_score
+
+    def __repr__(self):
+        return f"Manager {self.manager_id} at {self.timestamp}: {self.current_score} (Proj: {self.projected_score})"
+
+
 class Transaction(Base):
     __tablename__ = "transactions"
     

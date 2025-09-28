@@ -3,8 +3,10 @@ import json
 import os
 import requests
 import time
+import datetime
 
-from sql_tables import Player, Manager, Transaction, Roster
+from curl_extractor import extract_curl_data
+from sql_tables import Player, Manager, ManagerScore, Transaction, Roster
 from constants import SLEEPER_APP_BASE_URL
 
 
@@ -100,11 +102,50 @@ def get_rosters():
             waiver_budget_used=stats["waiver_budget_used"],
             waiver_position=stats["waiver_position"],
             refreshed_on=refresh_time
-
-
         )
         rosters.append(roster)
     return rosters
+
+def get_projected_scores(roster: Roster):
+    url, headers = extract_curl_data()
+    url = "https://sleeper.com/graphql"
+    week = get_week()
+    
+    player_id_str = "["
+    for player_id in roster.players:
+        player_id_str += "\\\"" + player_id + "\\\""
+    player_id_str += "]"
+
+    payload = "{\"query\":\"query get_player_score_and_projections_batch {\\n        \\n        nfl__regular__2025__4__stat: stats_for_players_in_week(sport: \\\"nfl\\\",season: \\\"2025\\\",category: \\\"stat\\\",season_type: \\\"regular\\\",week: "
+    payload += f"{week},player_ids: {player_id_str}"
+    payload += "){\\n          game_id\\nopponent\\nplayer_id\\nstats\\nteam\\nweek\\nseason\\n        }\\n      \\n\\n        nfl__regular__2025__4__proj: stats_for_players_in_week(sport: \\\"nfl\\\",season: \\\"2025\\\",category: \\\"proj\\\",season_type: \\\"regular\\\",week: "
+    payload += f"{week},player_ids: {player_id_str}"
+    payload += "){\\n          game_id\\nopponent\\nplayer_id\\nstats\\nteam\\nweek\\nseason\\n        }\\n      \\n      }\",\"variables\":{}}"
+
+    response = requests.request("POST", url, headers=headers, data=payload)
+    response = response.json()
+    refresh_time = int(time.time())
+    
+    manager_projected_score = 0
+    for player in response["data"]["nfl__regular__2025__4__proj"]:
+        if player["player_id"] in roster.starters:
+            manager_projected_score += float(player["stats"]["pts_half_ppr"])
+
+    manager_current_score = 0
+    for player in response["data"]["nfl__regular__2025__4__stat"]:
+        if player["player_id"] in roster.starters:
+            try:
+                manager_current_score += float(player["stats"]["pts_half_ppr"])
+            except KeyError:
+                print(f"KeyError: {player['player_id']} has no attribute pts_half_ppr for manager {roster.manager_id}")
+
+    manager_score = ManagerScore(
+        manager_id = roster.manager_id,
+        timestamp = refresh_time,
+        projected_score = manager_projected_score,
+        current_score = manager_current_score
+    )
+    return manager_score
 
 def update_players():
     db_helper = DatabaseHelper()

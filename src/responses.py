@@ -2,7 +2,7 @@ from random import choice, randint
 
 from db_helper import DatabaseHelper
 from sql_tables import Manager, Roster
-from sleeper import get_rosters, get_transactions_by_week, get_week
+from sleeper import get_rosters, get_transactions_by_week, get_week, get_projected_scores
 
 def get_response(user_input: str) -> str:
     lowered: str = user_input.lower()
@@ -108,6 +108,10 @@ class ResponseHandler:
             return teams_str
         elif player_input == "rosters":
             live_rosters = get_rosters()
+            for roster in live_rosters:
+                projections = get_projected_scores(roster = roster)
+                self.db.db_session.add(projections)
+            self.db.db_session.commit()
             return self.db.update_rosters(live_rosters, True)
         elif player_input == "transactions":
             all_transactions = get_transactions_by_week(week=get_week())
@@ -139,5 +143,5 @@ class ResponseHandler:
 if __name__ == "__main__":
     response_handler = ResponseHandler()
     print(get_week())
-    print(response_handler.handle("hello"))
+    print(response_handler.handle("!rosters"))
 
