@@ -115,7 +115,9 @@ class ResponseHandler:
             return self.db.update_rosters(live_rosters, True)
         elif player_input == "transactions":
             all_transactions = get_transactions_by_week(week=get_week())
+            all_transactions += get_transactions_by_week(week=get_week()-1)
             db_transactions = self.db.get_transactions_by_week(week=get_week())
+            db_transactions += self.db.get_transactions_by_week(week=get_week()-1)
             all_transaction_ids = set([int(_t.transaction_id) for _t in all_transactions])
             db_transaction_ids = set([int(_t.transaction_id) for _t in db_transactions])
             new_transactions = all_transaction_ids.difference(db_transaction_ids)
@@ -143,5 +145,5 @@ class ResponseHandler:
 if __name__ == "__main__":
     response_handler = ResponseHandler()
     print(get_week())
-    print(response_handler.handle("!rosters"))
+    print(response_handler.handle("!transactions"))
 
