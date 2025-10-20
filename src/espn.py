@@ -2,7 +2,7 @@ from datetime import datetime
 import requests
 import re
 
-def get_matchup_timestamps() -> dict[str, str]:
+def get_matchup_timestamps() -> dict[str, datetime]:
     # https://github.com/stylo-stack/ESPN-API-Documentation/blob/master/endpoints.txt
     endpoint = "http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
     r = requests.get(endpoint)

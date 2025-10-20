@@ -94,6 +94,10 @@ class Manager(Base):
     losses: int = sql.Column(sql.Integer)
     points_for: float = sql.Column(sql.Float)
     points_against: float = sql.Column(sql.Float)
+    dev_transaction_channel_id: int = sql.Column(sql.BigInteger)
+    transaction_channel_id: int = sql.Column(sql.BigInteger)
+    dev_transaction_message_id: int = sql.Column(sql.BigInteger)
+    transaction_message_id: int = sql.Column(sql.BigInteger)
 
     def __init__(self, manager_id: int, display_name: str, team_name: str, avatar: str, avatar_url: str, league_id: str, wins: int = 0, losses: int = 0, points_for: float = 0, points_against: float = 0):
         self.manager_id = manager_id
@@ -199,6 +203,7 @@ class Roster(Base):
         self.waiver_position = waiver_position
         self.refreshed_on = refreshed_on
 
+
 """
 # This would make roster queries easier
 class RosterPlayers(Base):
@@ -209,4 +214,5 @@ class RosterPlayers(Base):
     starter: bool = sql.Column(sql.Boolean)
     reserve: bool = sql.Column(sql.Boolean)
 """
+
 

@@ -8,6 +8,8 @@ from responses import ResponseHandler
 load_dotenv()
 TOKEN: Final[str] = os.getenv("DISCORD_TOKEN")
 DISCORD_GENERAL_ID = int(os.getenv("DISCORD_GENERAL_ID"))
+DISCORD_TRANSACTIONS_ID = int(os.getenv("DISCORD_TRANSACTIONS_ID"))
+RIGOR = os.getenv("RIGOR")
 intents: Intents = Intents.default()
 intents.message_content = True  # NOQA
 client = Client(intents=intents)
@@ -41,8 +43,38 @@ async def update_rosters() -> None:
     try:
         response: str = response_handler.handle("!transactions")
         if response is not None:
-            channel = client.get_channel(DISCORD_GENERAL_ID)
+            channel = client.get_channel(DISCORD_TRANSACTIONS_ID)
             await channel.send(response)
+    except Exception as e:
+        print(e)
+
+    try:
+        live_roster_results = response_handler.db.get_managers_and_rosters()
+        for manager, roster in live_roster_results:
+            message_id = None
+            if RIGOR == "DEV":
+                channel = client.get_channel(manager.dev_transaction_channel_id)
+                message_id = manager.dev_transaction_message_id
+            else:
+                channel = client.get_channel(manager.transaction_channel_id)
+                message_id = manager.transaction_message_id
+            response = response_handler.db.display_roster(roster)
+
+            if message_id is None:
+                message = await channel.send(response)
+                if RIGOR == "DEV":
+                    manager.dev_transaction_message_id = message.id
+                    print(f"Adding DEV message ID for {manager}")
+                else:
+                    manager.transaction_message_id = message.id
+                    print(f"Adding PROD message ID for {manager}")
+                response_handler.db.db_session.commit()
+            else:
+                message = await channel.fetch_message(message_id) 
+                await message.edit(content=response)
+                print(f"Edited previous message for {manager}!")
+
+
     except Exception as e:
         print(e)
 

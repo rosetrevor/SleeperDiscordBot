@@ -1,13 +1,10 @@
 from dotenv import load_dotenv
-import json
 import os
 import requests
 import time
-import datetime
 
 from curl_extractor import extract_curl_data
 from sql_tables import Player, Manager, ManagerScore, Transaction, Roster
-from constants import SLEEPER_APP_BASE_URL
 
 
 def get_week():

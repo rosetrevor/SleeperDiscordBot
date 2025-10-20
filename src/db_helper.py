@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 import os
 import sqlalchemy as sql
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Engine
+from sqlalchemy.orm import sessionmaker, Session
 import time
 
 from espn import get_matchup_timestamps
@@ -11,13 +11,13 @@ from sql_tables import Base, Player, Manager, Transaction, Roster
 
 class DatabaseHelper:
     def __init__(self):
-        self.db_session = None
-        self.db_engine = self.create_engine()
+        self.db_session: Session = None
+        self.db_engine: Engine = self.create_engine()
         self.db_metadata = sql.MetaData()
         self.db_metadata.reflect(bind=self.db_engine)
         Base.metadata.create_all(self.db_engine)
 
-    def create_engine(self, drivername: str="postgresql", port: int=5432, host: str="localhost", db_name: str="sleeper_db"):
+    def create_engine(self, drivername: str="postgresql", port: int=5432, host: str="localhost", db_name: str="sleeper_db") -> Engine:
         load_dotenv()
         db_url = sql.URL.create(
             drivername=drivername,
@@ -70,6 +70,15 @@ class DatabaseHelper:
         q = self.db_session.query(Roster)
         return q.all()
 
+    def get_managers_and_rosters(self) -> list[tuple[Manager, Roster]]:
+        """
+        Get all managers and their rosters.
+        """
+        q = self.db_session.query(Manager)
+        q = q.join(Roster, Manager.manager_id == Roster.manager_id)
+        q = q.add_columns(Roster)
+        return q.all()
+
     def get_transactions_by_week(self, week: int) -> list[Transaction]:
         """
         Get a list of databased transactions for a given week.
@@ -91,8 +100,27 @@ class DatabaseHelper:
             return ""
         return top_line + mid_line + bot_line
 
-    def update_rosters(self, rosters: list[Roster], commit: bool = True) -> str | None:
-        live_rosters = get_rosters()
+    def display_roster(self, roster: Roster, manager: Manager | None = None):
+        if manager is None:
+            manager = self.get_manager(roster.manager_id)
+
+        players = self.get_players_by_ids(roster.players)
+        player_map: dict[int, Player] = {player.player_id: player for player in players}
+
+        display_roster = ""
+        for player in roster.starters:
+            display_roster += f"{player_map[player]}\n"
+
+        bench = set(roster.players).difference(set(roster.starters))
+        for player in bench:
+            display_roster += f"[BN] {player_map[player].full_name}\n"
+        return display_roster
+
+    def update_rosters(self, rosters: list[Roster] | None = None, commit: bool = True) -> str | None:
+        if rosters is None: 
+            live_rosters = get_rosters()
+        else:
+            live_rosters = rosters
         db_rosters = self.get_rosters()
         refresh_time = int(time.time())
 
@@ -127,7 +155,13 @@ class DatabaseHelper:
                         db_starters = set(db_roster.starters)
                         started = live_starters.difference(db_starters)
                         benched = db_starters.difference(live_starters)
-                        late_starter_str += self.check_late_starter_swap(started, benched, live_roster.manager_id)
+                        try:
+                            late_starter_str += self.check_late_starter_swap(started, benched, live_roster.manager_id)
+                        except Exception:
+                            # This is a non-critical part of the code. We never want to block on this.
+                            # TODO: Should setup a real logger and add logging here
+                            print(f"Failed to check late starter swap for manager {live_roster.manager_id}")
+                            pass
 
                     for field in differing_fields:
                         setattr(db_roster, field, getattr(live_roster, field))
@@ -172,6 +206,7 @@ class DatabaseHelper:
 
 if __name__ == "__main__":
     db = DatabaseHelper()
-    transactions = db.get_transactions_by_week(4)
-    for transaction in transactions:
-        print(transaction.transaction_id)
+
+    results = db.get_managers_and_rosters()
+    for manager, roster in results:
+        print(db.display_roster(roster))
