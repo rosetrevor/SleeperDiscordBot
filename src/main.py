@@ -64,15 +64,12 @@ async def update_rosters() -> None:
                 message = await channel.send(response)
                 if RIGOR == "DEV":
                     manager.dev_transaction_message_id = message.id
-                    print(f"Adding DEV message ID for {manager}")
                 else:
                     manager.transaction_message_id = message.id
-                    print(f"Adding PROD message ID for {manager}")
                 response_handler.db.db_session.commit()
             else:
                 message = await channel.fetch_message(message_id) 
                 await message.edit(content=response)
-                print(f"Edited previous message for {manager}!")
 
 
     except Exception as e:
