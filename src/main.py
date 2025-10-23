@@ -48,32 +48,32 @@ async def update_rosters() -> None:
     except Exception as e:
         print(e)
 
-    try:
-        live_roster_results = response_handler.db.get_managers_and_rosters()
-        for manager, roster in live_roster_results:
-            message_id = None
+    # try:
+    live_roster_results = response_handler.db.get_managers_and_rosters()
+    for manager, roster in live_roster_results:
+        message_id = None
+        if RIGOR == "DEV":
+            channel = client.get_channel(manager.dev_transaction_channel_id)
+            message_id = manager.dev_transaction_message_id
+        else:
+            channel = client.get_channel(manager.transaction_channel_id)
+            message_id = manager.transaction_message_id
+        response = response_handler.db.display_roster(roster)
+
+        if message_id is None:
+            message = await channel.send(response)
             if RIGOR == "DEV":
-                channel = client.get_channel(manager.dev_transaction_channel_id)
-                message_id = manager.dev_transaction_message_id
+                manager.dev_transaction_message_id = message.id
             else:
-                channel = client.get_channel(manager.transaction_channel_id)
-                message_id = manager.transaction_message_id
-            response = response_handler.db.display_roster(roster)
-
-            if message_id is None:
-                message = await channel.send(response)
-                if RIGOR == "DEV":
-                    manager.dev_transaction_message_id = message.id
-                else:
-                    manager.transaction_message_id = message.id
-                response_handler.db.db_session.commit()
-            else:
-                message = await channel.fetch_message(message_id) 
-                await message.edit(content=response)
+                manager.transaction_message_id = message.id
+            response_handler.db.db_session.commit()
+        else:
+            message = await channel.fetch_message(message_id) 
+            await message.edit(content=response)
 
 
-    except Exception as e:
-        print(e)
+    #except Exception as e:
+    #    print(e)
 
 
 @client.event

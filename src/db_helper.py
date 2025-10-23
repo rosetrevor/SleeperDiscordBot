@@ -109,11 +109,17 @@ class DatabaseHelper:
 
         display_roster = ""
         for player in roster.starters:
-            display_roster += f"{player_map[player]}\n"
+            try:
+                display_roster += f"{player_map[player]}\n"
+            except KeyError:
+                display_roster += f"[    ] - Empty\n"
 
         bench = set(roster.players).difference(set(roster.starters))
         for player in bench:
-            display_roster += f"[BN] {player_map[player].full_name}\n"
+            try:
+                display_roster += f"[BN] {player_map[player].full_name}\n"
+            except KeyError:
+                display_roster += f"[    ] - Empty\n"
         return display_roster
 
     def update_rosters(self, rosters: list[Roster] | None = None, commit: bool = True) -> str | None:
