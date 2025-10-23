@@ -23,6 +23,15 @@ def get_all_players():
         players[str(player_id)] = player
     return players
 
+def get_scoring_settings() -> dict[str, str]:
+    load_dotenv()
+    league_id = os.getenv("SLEEPER_LEAGUE_ID")
+
+    endpoint = f"https://api.sleeper.app/v1/league/{league_id}"
+    r = requests.get(endpoint)
+    league = r.json()
+    return league["scoring_settings"]
+
 def get_managers() -> list[Manager]:
     load_dotenv()
     league_id = os.getenv("SLEEPER_LEAGUE_ID")
@@ -123,10 +132,31 @@ def get_projected_scores(roster: Roster):
     response = response.json()
     refresh_time = int(time.time())
     
+    scoring_settings = get_scoring_settings()
+    projections = get_player_projected_scores()  # TODO: Really shouldn't call this for every manager
+    projections = {p["player_id"]: p for p in projections}
+
     manager_projected_score = 0
-    for player in response["data"]["nfl__regular__2025__4__proj"]:
-        if player["player_id"] in roster.starters:
-            manager_projected_score += float(player["stats"]["pts_half_ppr"])
+    for player in roster.starters:
+        try:
+            stats = projections[player]["stats"]
+        except KeyError:
+            # Means the player is on a bye
+            continue
+        projected_score = 0
+        for category, projection in stats.items():
+            projected_score += scoring_settings.get(category, 0) * projection
+        if stats.get("fga", 0) > 0.1:  # Attempting more than .1 field goals means they are a kicker
+            # TODO: Kickers still don't align perfectly, but it's close enough I'm over it for now
+            projected_score += scoring_settings.get("fgmiss", 0) * (stats["fga"] - stats["fgm"])
+            projected_score += scoring_settings.get("xpmiss", 0) * (stats["xpa"] - stats["xpm"])
+        manager_projected_score += projected_score
+
+    # We aren't perfectly half PPR, so this doesn't work. Above section works much better.
+    # manager_projected_score = 0
+    # for player in response["data"]["nfl__regular__2025__4__proj"]:
+    #     if player["player_id"] in roster.starters:
+    #         manager_projected_score += float(player["stats"]["pts_half_ppr"])
 
     manager_current_score = 0
     for player in response["data"]["nfl__regular__2025__4__stat"]:
@@ -143,6 +173,14 @@ def get_projected_scores(roster: Roster):
         current_score = manager_current_score
     )
     return manager_score
+
+def get_player_projected_scores():
+    endpoint = "https://api.sleeper.app/projections/nfl/2025/8?season_type=regular&position[]=DB&position[]=DEF&position[]=DL&position[]=FLEX&position[]=IDP_FLEX&position[]=K&position[]=LB&position[]=QB&position[]=RB&position[]=REC_FLEX&position[]=SUPER_FLEX&position[]=TE&position[]=WR&position[]=WRRB_FLEX&order_by=ppr"
+
+    response = requests.get(endpoint)
+
+    return response.json()
+
 
 def update_players():
     db_helper = DatabaseHelper()
@@ -170,10 +208,14 @@ def update_players():
 if __name__ == "__main__":
     from db_helper import DatabaseHelper
     db = DatabaseHelper()
-    # get_rosters(db)
-    #managers = get_managers(db)
-    #print(managers) 
-    transactions = get_transactions_by_week(week=4)
-    for transaction in transactions:
-        print(db.display_transaction(transaction))
+    # # get_rosters(db)
+    # #managers = get_managers(db)
+    # #print(managers) 
+    # transactions = get_transactions_by_week(week=4)
+    # for transaction in transactions:
+    #     print(db.display_transaction(transaction))
 
+    results = db.db_session.query(Manager).join(Roster).add_columns(Roster)
+    for manager, roster in results:
+        manager_score = get_projected_scores(roster)
+        print(manager, manager_score.projected_score)

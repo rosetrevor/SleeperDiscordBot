@@ -135,6 +135,20 @@ class ManagerScore(Base):
     def __repr__(self):
         return f"Manager {self.manager_id} at {self.timestamp}: {self.current_score} (Proj: {self.projected_score})"
 
+class PlayerScore(Base):
+    __tablename__ = "table_scores"
+    player_id: str = sql.Column(sql.Text, primary_key=True)
+    timestamp: int = sql.Column(sql.BigInteger, primary_key=True)
+    projected_score: float = sql.Column(sql.Float)
+
+    def __init__(self, player_id: str, timestamp: int, projected_score, float, current_score: float) -> None:
+        self.player_id = player_id
+        self.timestamp = timestamp
+        self.projected_score = projected_score
+
+    def __repr__(self):
+        return f"Player {self.player_id} at {self.timestamp}: Projc = {self.projected_score}"
+
 
 class Transaction(Base):
     __tablename__ = "transactions"
