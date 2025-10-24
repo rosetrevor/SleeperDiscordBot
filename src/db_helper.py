@@ -216,3 +216,4 @@ if __name__ == "__main__":
     results = db.get_managers_and_rosters()
     for manager, roster in results:
         print(db.display_roster(roster))
+

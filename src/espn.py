@@ -17,7 +17,7 @@ def get_matchup_timestamps() -> dict[str, dict[str, datetime | bool | float]]:
         format_string = "%Y-%m-%d %H:%M"
         event_datetime = datetime.strptime(event_datetime, format_string)
         status = event.get("status", {})
-        in_progress = status.get("type", {}).get("state", False) == "in"
+        in_progress = status.get("type", {}).get("state", False) in ["in", "post"]
         display_clock = status.get("displayClock", "0:00")
         quarter = status.get("period", 0)
         mins_seconds = [int(substr) for substr in display_clock.split(":")]
