@@ -4,6 +4,7 @@ import requests
 import time
 
 from curl_extractor import extract_curl_data
+from espn import get_matchup_timestamps
 from sql_tables import Player, Manager, ManagerScore, Transaction, Roster
 
 
@@ -112,6 +113,21 @@ def get_rosters():
         rosters.append(roster)
     return rosters
 
+def get_game_statuses(week: int):
+    url, headers = extract_curl_data()
+    url = "https://api.sleeper.com/schedule/nfl/regular/2025"
+    
+    response = requests.request("GET", url)
+    print(response.status_code)
+    response = response.json()
+    teams = {}
+
+    for game in response:
+        if game["week"] == week:
+            teams[game["home"]] = game["status"]
+            teams[game["away"]] = game["status"]
+    return teams
+
 def get_projected_scores(roster: Roster):
     url, headers = extract_curl_data()
     url = "https://sleeper.com/graphql"
@@ -136,35 +152,56 @@ def get_projected_scores(roster: Roster):
     projections = get_player_projected_scores()  # TODO: Really shouldn't call this for every manager
     projections = {p["player_id"]: p for p in projections}
 
+    matchups = get_matchup_timestamps()
+
+    player_stats = {player["player_id"]: player for player in response["data"]["nfl__regular__2025__4__stat"]}
+    player_projs = {player["player_id"]: player for player in response["data"]["nfl__regular__2025__4__proj"]}
+
+    def apply_scoring(score_settings, _stats):
+        _score = 0
+        for category, projection in _stats.items():
+            try:
+                _score += scoring_settings.get(category, 0) * projection
+            except TypeError:
+                pass
+        if stats.get("fga", 0) > 0.1:  # Attempting more than .1 field goals means they are a kicker
+            # TODO: Kickers still don't align perfectly, but it's close enough I'm over it for now
+            _score += score_settings.get("fgmiss", 0) * (stats["fga"] - stats["fgm"]) * 0
+            _score += score_settings.get("xpmiss", 0) * (stats["xpa"] - stats["xpm"]) * 0  # TODO: Does this apply?
+        return _score
+        
     manager_projected_score = 0
-    for player in roster.starters:
+    for player_id in roster.starters:
         try:
-            stats = projections[player]["stats"]
+            stats = projections[player_id]["stats"]
+            # stats = player_projs[player]
         except KeyError:
             # Means the player is on a bye
             continue
         projected_score = 0
-        for category, projection in stats.items():
-            projected_score += scoring_settings.get(category, 0) * projection
-        if stats.get("fga", 0) > 0.1:  # Attempting more than .1 field goals means they are a kicker
-            # TODO: Kickers still don't align perfectly, but it's close enough I'm over it for now
-            projected_score += scoring_settings.get("fgmiss", 0) * (stats["fga"] - stats["fgm"])
-            projected_score += scoring_settings.get("xpmiss", 0) * (stats["xpa"] - stats["xpm"])
+        in_game = False
+        if matchups[projections[player_id]["team"]]["in_progress"]:
+            in_game = True
+        projected_score = apply_scoring(scoring_settings, stats)
+        if in_game:
+            # Interpolate by time left in match
+            multiplier = matchups[projections[player_id]["team"]]["time_remaining"] / 60
+            player_current_score = apply_scoring(scoring_settings, player_stats[player_id]["stats"])
+            projected_score = projected_score * multiplier + player_current_score
         manager_projected_score += projected_score
 
-    # We aren't perfectly half PPR, so this doesn't work. Above section works much better.
-    # manager_projected_score = 0
-    # for player in response["data"]["nfl__regular__2025__4__proj"]:
-    #     if player["player_id"] in roster.starters:
-    #         manager_projected_score += float(player["stats"]["pts_half_ppr"])
-
     manager_current_score = 0
-    for player in response["data"]["nfl__regular__2025__4__stat"]:
-        if player["player_id"] in roster.starters:
-            try:
-                manager_current_score += float(player["stats"]["pts_half_ppr"])
-            except KeyError:
-                print(f"KeyError: {player['player_id']} has no attribute pts_half_ppr for manager {roster.manager_id}")
+    for player_id in roster.starters:
+        try:
+            player = player_stats[player_id]
+        except KeyError:
+            # Means the player is on a bye
+            continue
+        stats = player["stats"]
+        try:
+            manager_current_score += apply_scoring(scoring_settings, stats)
+        except KeyError:
+            print(f"KeyError: {player['player_id']} has no attribute pts_half_ppr for manager {roster.manager_id}")
 
     manager_score = ManagerScore(
         manager_id = roster.manager_id,
@@ -218,4 +255,6 @@ if __name__ == "__main__":
     results = db.db_session.query(Manager).join(Roster).add_columns(Roster)
     for manager, roster in results:
         manager_score = get_projected_scores(roster)
-        print(manager, manager_score.projected_score)
+        print(manager, manager_score.projected_score, manager_score.current_score)
+    # print(get_game_statuses(8))
+
