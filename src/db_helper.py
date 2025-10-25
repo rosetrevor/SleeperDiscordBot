@@ -113,7 +113,7 @@ class DatabaseHelper:
         players = self.get_players_by_ids(roster.players)
         player_map: dict[int, Player] = {player.player_id: player for player in players}
 
-        display_roster = f"# **{manager.team_name}** ({manager_score.current_score:.2f} / *{manager_score.projected_score:.2f}*)\n"
+        display_roster = f"## **{manager.team_name}** ({manager_score.current_score:.2f} / *{manager_score.projected_score:.2f}*)\n"
         for player in roster.starters:
             try:
                 display_roster += f"{player_map[player]}\n"
