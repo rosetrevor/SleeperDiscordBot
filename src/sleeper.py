@@ -53,6 +53,13 @@ def get_managers() -> list[Manager]:
         managers.append(manager)
     return managers
 
+def get_manager_matchups(week: int = 1):
+    load_dotenv()
+    league_id = os.getenv("SLEEPER_LEAGUE_ID")
+    endpoint = f"https://api.sleeper.app/v1/league/{league_id}/matchups/{week}"
+    r = requests.get(endpoint)
+    return r.json()
+
 def get_transactions_by_week(week: int = 1):
     load_dotenv()
     league_id = os.getenv("SLEEPER_LEAGUE_ID")

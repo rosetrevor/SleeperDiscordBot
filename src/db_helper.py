@@ -7,7 +7,7 @@ import time
 
 from espn import get_matchup_timestamps
 from sleeper import get_rosters
-from sql_tables import Base, Player, Manager, Transaction, Roster
+from sql_tables import Base, ManagerScore, Player, Manager, Transaction, Roster
 
 class DatabaseHelper:
     def __init__(self):
@@ -103,11 +103,17 @@ class DatabaseHelper:
     def display_roster(self, roster: Roster, manager: Manager | None = None):
         if manager is None:
             manager = self.get_manager(roster.manager_id)
+        q = self.db_session.query(Manager)
+        q = q.where(Manager.manager_id == roster.manager_id)
+        q = q.join(ManagerScore, ManagerScore.manager_id == Manager.manager_id)
+        q = q.order_by(ManagerScore.timestamp.desc())
+        q = q.add_columns(ManagerScore)
+        manager, manager_score = q.first()
 
         players = self.get_players_by_ids(roster.players)
         player_map: dict[int, Player] = {player.player_id: player for player in players}
 
-        display_roster = ""
+        display_roster = f"# **{manager.team_name}** ({manager_score.current_score:.2f} / *{manager_score.projected_score:.2f}*)\n"
         for player in roster.starters:
             try:
                 display_roster += f"{player_map[player]}\n"
