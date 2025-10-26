@@ -39,7 +39,9 @@ async def update_rosters() -> None:
             await channel.send(response)
     except Exception as e:
         print(e)
-    
+
+@tasks.loop(minutes=3.0)
+async def update_transactions() -> None:
     try:
         response: str = response_handler.handle("!transactions")
         if response is not None:
@@ -48,6 +50,8 @@ async def update_rosters() -> None:
     except Exception as e:
         print(e)
 
+@tasks.loop(minutes=3.0)
+async def update_projected_scores() -> None:
     # try:
     live_roster_results = response_handler.db.get_managers_and_rosters()
     for manager, roster in live_roster_results:
@@ -80,6 +84,8 @@ async def update_rosters() -> None:
 async def on_ready() -> None:
     print(f"{client.user} is now running!")
     update_rosters.start()
+    update_transactions.start()
+    update_projected_scores.start()
 
 @client.event
 async def on_message(message: Message) -> None:
