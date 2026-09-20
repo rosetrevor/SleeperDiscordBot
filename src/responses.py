@@ -2,7 +2,12 @@ from random import choice, randint
 
 from db_helper import DatabaseHelper
 from sql_tables import Manager, Roster
-from sleeper import get_rosters, get_transactions_by_week, get_week, get_projected_scores
+from sleeper import (
+    get_rosters,
+    get_transactions_by_week,
+    get_week,
+    get_projected_scores,
+)
 
 
 class ResponseHandler:
@@ -16,15 +21,15 @@ class ResponseHandler:
             return self.process_command(lowered.split("!")[-1])
         else:
             return self.handle_basic_response(lowered)
-    
+
     def handle_unknown_response(self):
-        #return choice(["I do not understand", "What?", "Repeat that?", "Come again?"])
+        # return choice(["I do not understand", "What?", "Repeat that?", "Come again?"])
         return
 
     def handle_basic_response(self, message: str) -> str:
         lowered = message
         if lowered == "":
-           return "Well, you are awfully silent..."
+            return "Well, you are awfully silent..."
         elif "hello" in lowered:
             return "Hello there"
         elif "how are you" in lowered:
@@ -35,7 +40,7 @@ class ResponseHandler:
             return f"You rolled: {randint(1, 6)}"
         else:
             return self.handle_unknown_response()
-    
+
     def process_command(self, player_input: str) -> str:
         # Extract everything up to first " -"
         command = player_input.split(" -")[0]
@@ -63,25 +68,34 @@ class ResponseHandler:
         elif player_input == "rosters":
             live_rosters = get_rosters()
             for roster in live_rosters:
-                projections = get_projected_scores(roster = roster)
+                projections = get_projected_scores(roster=roster)
                 self.db.db_session.add(projections)
             self.db.db_session.commit()
             return self.db.update_rosters(live_rosters, True)
         elif player_input == "transactions":
             all_transactions = get_transactions_by_week(week=get_week())
-            all_transactions += get_transactions_by_week(week=get_week()-1)
+            all_transactions += get_transactions_by_week(week=get_week() - 1)
             db_transactions = self.db.get_transactions_by_week(week=get_week())
-            db_transactions += self.db.get_transactions_by_week(week=get_week()-1)
-            all_transaction_ids = set([int(_t.transaction_id) for _t in all_transactions])
+            db_transactions += self.db.get_transactions_by_week(week=get_week() - 1)
+            all_transaction_ids = set(
+                [int(_t.transaction_id) for _t in all_transactions]
+            )
             db_transaction_ids = set([int(_t.transaction_id) for _t in db_transactions])
             new_transactions = all_transaction_ids.difference(db_transaction_ids)
             transaction_str = None
             for transaction in all_transactions:
-                if int(transaction.transaction_id) in new_transactions and transaction.status == "complete":
+                if (
+                    int(transaction.transaction_id) in new_transactions
+                    and transaction.status == "complete"
+                ):
                     if transaction_str is None:
-                        transaction_str = f"{self.db.display_transaction(transaction)}\n"
+                        transaction_str = (
+                            f"{self.db.display_transaction(transaction)}\n"
+                        )
                     else:
-                        transaction_str += f"{self.db.display_transaction(transaction)}\n"
+                        transaction_str += (
+                            f"{self.db.display_transaction(transaction)}\n"
+                        )
                 if int(transaction.transaction_id) in new_transactions:
                     print(new_transactions)
                     print()
@@ -92,12 +106,12 @@ class ResponseHandler:
                     self.db.db_session.commit()  # TODO: Problably want to move a bit of this logic
             return transaction_str
         elif player_input == "currentidiot":
-            return "the current idiot is trevbawt :("
+            return "The current idiot is Mint8erryCrunch!"
         else:
             return self.handle_unknown_response()
+
 
 if __name__ == "__main__":
     response_handler = ResponseHandler()
     print(get_week())
     print(response_handler.handle("!transactions"))
-

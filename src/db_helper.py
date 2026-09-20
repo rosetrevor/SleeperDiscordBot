@@ -9,6 +9,7 @@ from espn import get_matchup_timestamps
 from sleeper import get_rosters
 from sql_tables import Base, ManagerScore, Player, Manager, Transaction, Roster
 
+
 class DatabaseHelper:
     def __init__(self):
         self.db_session: Session = None
@@ -17,7 +18,13 @@ class DatabaseHelper:
         self.db_metadata.reflect(bind=self.db_engine)
         Base.metadata.create_all(self.db_engine)
 
-    def create_engine(self, drivername: str="postgresql", port: int=5432, host: str="localhost", db_name: str="sleeper_db") -> Engine:
+    def create_engine(
+        self,
+        drivername: str = "postgresql",
+        port: int = 5432,
+        host: str = "localhost",
+        db_name: str = "sleeper_db",
+    ) -> Engine:
         load_dotenv()
         db_url = sql.URL.create(
             drivername=drivername,
@@ -25,7 +32,7 @@ class DatabaseHelper:
             password=os.getenv("SLEEPER_DB_PASSWORD"),
             host=host,
             port=port,
-            database=db_name
+            database=db_name,
         )
         _engine = create_engine(db_url)
         _session = sessionmaker(_engine)
@@ -91,12 +98,17 @@ class DatabaseHelper:
         manager = self.get_manager(transaction.manager_id)
         add_player = self.get_player(transaction.player_added)
         drop_player = self.get_player(transaction.player_dropped)
-        top_line = f"{manager.display_name}\n"                              
+        top_line = f"{manager.display_name}\n"
         mid_line = f"  + {add_player}\n"
         bot_line = f"  \\- {drop_player}"
-        if transaction.transaction_type == "waiver" and transaction.status == "complete":
+        if (
+            transaction.transaction_type == "waiver"
+            and transaction.status == "complete"
+        ):
             top_line = f"{manager.display_name} (${transaction.waiver_bid})\n"
-        elif transaction.transaction_type == "waiver" and transaction.status == "failed":
+        elif (
+            transaction.transaction_type == "waiver" and transaction.status == "failed"
+        ):
             return ""
         return top_line + mid_line + bot_line
 
@@ -128,8 +140,10 @@ class DatabaseHelper:
                 display_roster += f"[    ] - Empty\n"
         return display_roster
 
-    def update_rosters(self, rosters: list[Roster] | None = None, commit: bool = True) -> str | None:
-        if rosters is None: 
+    def update_rosters(
+        self, rosters: list[Roster] | None = None, commit: bool = True
+    ) -> str | None:
+        if rosters is None:
             live_rosters = get_rosters()
         else:
             live_rosters = rosters
@@ -148,16 +162,16 @@ class DatabaseHelper:
             "points_against",
             "potential_points",
             "total_moves",
-            "waiver_budget_used"
+            "waiver_budget_used",
         ]
         late_starter_str = ""
         for live_roster in live_rosters:
             compared_roster = False
             for db_roster in db_rosters:
                 if live_roster.roster_id == db_roster.roster_id:
-                    compared_roster = True 
+                    compared_roster = True
                     differing_fields = []
-                    identical = True 
+                    identical = True
                     for field in comparison_fields:
                         if not getattr(live_roster, field) == getattr(db_roster, field):
                             differing_fields.append(field)
@@ -168,11 +182,15 @@ class DatabaseHelper:
                         started = live_starters.difference(db_starters)
                         benched = db_starters.difference(live_starters)
                         try:
-                            late_starter_str += self.check_late_starter_swap(started, benched, live_roster.manager_id)
+                            late_starter_str += self.check_late_starter_swap(
+                                started, benched, live_roster.manager_id
+                            )
                         except Exception:
                             # This is a non-critical part of the code. We never want to block on this.
                             # TODO: Should setup a real logger and add logging here
-                            print(f"Failed to check late starter swap for manager {live_roster.manager_id}")
+                            print(
+                                f"Failed to check late starter swap for manager {live_roster.manager_id}"
+                            )
                             pass
 
                     for field in differing_fields:
@@ -188,12 +206,16 @@ class DatabaseHelper:
         if len(late_starter_str) > 0:
             return late_starter_str
 
-    def check_late_starter_swap(self, started_ids, benched_ids, manager_id, late_starter_threshold: int = 600):
+    def check_late_starter_swap(
+        self, started_ids, benched_ids, manager_id, late_starter_threshold: int = 600
+    ):
         matchup_timestamps = get_matchup_timestamps()
         manager = self.get_manager(manager_id)
         started_players = self.get_players_by_ids(started_ids)
         benched_players = self.get_players_by_ids(benched_ids)
-        player_swap_str = f"🚨 Late move alert by {manager.display_name} 🚨\n  Started:\n"
+        player_swap_str = (
+            f"🚨 Late move alert by {manager.display_name} 🚨\n  Started:\n"
+        )
         late_swap = False
         for started_player in started_players:
             game_time = matchup_timestamps[started_player.team]["timestamp"]
@@ -208,13 +230,13 @@ class DatabaseHelper:
             current_time = time.time()
             delta_time = game_time - current_time
             if abs(delta_time) < late_starter_threshold:
-                late_swap = True  
+                late_swap = True
             player_swap_str += f"    \\- {benched_player}" + "\n"
         if late_swap:
             return player_swap_str
         else:
             return ""
- 
+
 
 if __name__ == "__main__":
     db = DatabaseHelper()
@@ -222,4 +244,3 @@ if __name__ == "__main__":
     results = db.get_managers_and_rosters()
     for manager, roster in results:
         print(db.display_roster(roster))
-
